@@ -7,3 +7,6 @@ Information regarding the linux bluetooth socket interface and interaction can b
 
 ---
 Due to security on the Raspberry Pi, the btApp program must be run under the root account. 
+
+` sudo ./btApp ` will allow for the program to start correctly.
+You can also use ` make run ` instead.
