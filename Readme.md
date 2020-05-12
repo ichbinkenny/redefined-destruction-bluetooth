@@ -1,12 +1,10 @@
 # Bluetooth Control System
 ---
-Information regarding the linux bluetooth socket interface and interaction can be found [here](https://people.csail.mit.edu/albert/bluez-intro/c404.html)
-
----
 ## Launching Application
 
 ---
 Due to security on the Raspberry Pi, the btApp program must be run under the root account. 
 
-` sudo ./btApp ` will allow for the program to start correctly.
-You can also use ` make run ` instead.
+` sudo python3 BluetoothControl.py ` will allow for the program to start correctly.
+
+Without providing the sudo command, sockets will not be allowed to open for communication.
