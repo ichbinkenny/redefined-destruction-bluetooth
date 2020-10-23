@@ -30,7 +30,10 @@ def parseCommand(cmd_list):
         print("Movement request")
     elif len(cmd_list) == 3:
         # Movement and attack sent.
-        print("Movement and attack request")
+        if cmd_list[0].lower() == "wifi":
+            print("Wifi Request")
+        else:
+            print("Movement and attack request")
 
 def setup():
     print("Creating server socket.")
