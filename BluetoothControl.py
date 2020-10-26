@@ -1,6 +1,9 @@
 import bluetooth
+import subprocess
 
 uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
+front_wheel_proc = None
+back_wheel_proc = None
 
 def doConnection(server_sock):
     client_sock, client_info = server_sock.accept()
@@ -28,6 +31,8 @@ def parseCommand(cmd_list):
     if len(cmd_list) == 2:
         # Only movements were sent.
         print("Movement request")
+        out, err = front_wheel_proc.communicate("Got Message!", None)
+        print(out)
     elif len(cmd_list) == 3:
         # Movement and attack sent.
         if cmd_list[0].lower() == "wifi":
@@ -36,6 +41,9 @@ def parseCommand(cmd_list):
             print("Movement and attack request")
 
 def setup():
+    print("Starting movement modules...")
+    global front_wheel_proc
+    front_wheel_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/FrontWheels.py"])
     print("Creating server socket.")
     server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
     server_sock.bind(("", bluetooth.PORT_ANY))
