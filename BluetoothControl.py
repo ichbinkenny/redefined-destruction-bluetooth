@@ -31,8 +31,7 @@ def parseCommand(cmd_list):
     if len(cmd_list) == 2:
         # Only movements were sent.
         print("Movement request")
-        out, err = front_wheel_proc.communicate("Got Message!", None)
-        print(out)
+        front_wheel_proc.communicate("Got Message!", None)
     elif len(cmd_list) == 3:
         # Movement and attack sent.
         if cmd_list[0].lower() == "wifi":
