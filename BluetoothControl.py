@@ -24,14 +24,16 @@ def doConnection(server_sock):
 
     print("Client disconnected... Awaiting new client connection.")
     client_sock.close()
-    doConnection() # prevent from closing on dc
+    doConnection(server_sock) # prevent from closing on dc
 
 def parseCommand(cmd_list):
     # For now, this accounts only for joystick position, and attack button status
     if len(cmd_list) == 2:
         # Only movements were sent.
         print("Movement request")
-        front_wheel_proc.stdin.write(cmd_list[0])
+        front_val = str(cmd_list[0]) + "\n"
+        front_wheel_proc.stdin.write(front_val.encode('utf-8'))
+        front_wheel_proc.stdin.flush()
     elif len(cmd_list) == 3:
         # Movement and attack sent.
         if cmd_list[0].lower() == "wifi":
@@ -42,7 +44,7 @@ def parseCommand(cmd_list):
 def setup():
     print("Starting movement modules...")
     global front_wheel_proc
-    front_wheel_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/FrontWheels.py"])
+    front_wheel_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/FrontWheels.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     print("Creating server socket.")
     server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
     server_sock.bind(("", bluetooth.PORT_ANY))
