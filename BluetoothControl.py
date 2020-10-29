@@ -13,7 +13,7 @@ from BackWheels import stop as back_stop
 uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 front_wheel_proc = None
 back_wheel_proc = None
-armor_refresh_rate_ms = 50
+armor_refresh_rate_ms = 100
 connected = False
 
 def sendArmorStatus(client_sock):
