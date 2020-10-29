@@ -2,14 +2,13 @@ import bluetooth
 import subprocess
 from os import system
 import time
-import threading
+import multiprocessing
 
 uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 front_wheel_proc = None
 back_wheel_proc = None
 armor_refresh_rate_ms = 50
 connected = False
-connected_lock = threading.Lock()
 
 def sendArmorStatus(client_sock):
     while True:
@@ -19,8 +18,8 @@ def sendArmorStatus(client_sock):
 
 def doConnection(server_sock):
     client_sock, client_info = server_sock.accept()
-    armor_thread = threading.Thread(None, sendArmorStatus, "armorThread", [client_sock])
-    #armor_thread.start()
+    armor_process = multiprocessing.Process(target=sendArmorStatus, args=(client_sock,))
+    armor_process.start()
     connected = True
     # We can fetch data now!
     while connected:
@@ -33,6 +32,7 @@ def doConnection(server_sock):
         except:
             connected = False # client disconnected!
 
+    armor_process.terminate()
     print("Client disconnected... Awaiting new client connection.")
     client_sock.close()
     doConnection(server_sock) # prevent from closing on dc
