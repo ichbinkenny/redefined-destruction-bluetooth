@@ -4,6 +4,12 @@ from os import system
 import time
 import multiprocessing
 
+import sys
+sys.path.append('../Movement/')
+### Local module imports
+from FrontWheels import stop as front_stop
+from BackWheels import stop as back_stop
+
 uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 front_wheel_proc = None
 back_wheel_proc = None
@@ -15,6 +21,7 @@ def sendArmorStatus(client_sock):
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
         armor_status = armor_stat_proc.stdout.readline()
         client_sock.send("Armor Status: {}".format(armor_status))
+        time.sleep(armor_refresh_rate_ms / 1000.0)
 
 def doConnection(server_sock):
     client_sock, client_info = server_sock.accept()
@@ -32,6 +39,8 @@ def doConnection(server_sock):
         except:
             connected = False # client disconnected!
 
+    front_stop()
+    back_stop()
     armor_process.terminate()
     print("Client disconnected... Awaiting new client connection.")
     client_sock.close()
