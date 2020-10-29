@@ -12,35 +12,26 @@ connected = False
 connected_lock = threading.Lock()
 
 def sendArmorStatus(client_sock):
-    connected_lock.acquire()
-    while connected:
-        connected_lock.release()
+    while True:
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
         armor_status = armor_stat_proc.stdout.readline()
         client_sock.send("Armor Status: {}".format(armor_status))
-        connected_lock.acquire()
 
 def doConnection(server_sock):
     client_sock, client_info = server_sock.accept()
     armor_thread = threading.Thread(None, sendArmorStatus, "armorThread", [client_sock])
     #armor_thread.start()
-    global connected
-    connected_lock.acquire()
     connected = True
     # We can fetch data now!
     while connected:
-        connected_lock.release()
         try:
             data = client_sock.recv(1024).decode('utf-8')
             if not data: #no data received
                 break
             print("Received:", data)
             parseCommand(data.split(' '))
-            connected_lock.acquire()
         except:
-            connected_lock.acquire()
             connected = False # client disconnected!
-            connected_lock.release()
 
     print("Client disconnected... Awaiting new client connection.")
     client_sock.close()
