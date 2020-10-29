@@ -1,32 +1,47 @@
 import bluetooth
 import subprocess
 from os import system
+import time
+import threading
 
 uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 front_wheel_proc = None
 back_wheel_proc = None
+armor_refresh_rate_ms = 50
+connected = False
+connected_lock = threading.Lock()
+
+def sendArmorStatus(client_sock):
+    connected_lock.acquire()
+    while connected:
+        connected_lock.release()
+        armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
+        armor_status = armor_stat_proc.stdout.readline()
+        client_sock.send("Armor Status: {}".format(armor_status))
+        time.sleep(armor_refresh_rate_ms / 1000.0)
+        connected_lock.acquire()
 
 def doConnection(server_sock):
     client_sock, client_info = server_sock.accept()
-    print("Got connection from", client_info)
-
+    armor_thread = threading.Thread(None, sendArmorStatus, "armorThread", [client_sock])
+    armor_thread.start()
+    global connected
+    connected_lock.acquire()
     connected = True
-
     # We can fetch data now!
     while connected:
+        connected_lock.release()
         try:
-            #this armor checking code will need to move to its own thread most likely.
-            armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
-            armor_status = armor_stat_proc.stdout.readline()
-            client_sock.send("Armor Status: {}".format(armor_status))
-
             data = client_sock.recv(1024).decode('utf-8')
             if not data: #no data received
                 break
             print("Received:", data)
             parseCommand(data.split(' '))
+            connected_lock.acquire()
         except:
+            connected_lock.acquire()
             connected = False # client disconnected!
+            connected_lock.release()
 
     print("Client disconnected... Awaiting new client connection.")
     client_sock.close()
