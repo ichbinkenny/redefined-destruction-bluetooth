@@ -15,6 +15,11 @@ def doConnection(server_sock):
     # We can fetch data now!
     while connected:
         try:
+            #this armor checking code will need to move to its own thread most likely.
+            armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
+            armor_status = armor_stat_proc.stdout.readline()
+            client_sock.send("Armor Status: {}".format(armor_status))
+
             data = client_sock.recv(1024).decode('utf-8')
             if not data: #no data received
                 break
