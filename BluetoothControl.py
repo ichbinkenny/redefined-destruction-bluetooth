@@ -23,7 +23,7 @@ def sendArmorStatus(client_sock):
 def doConnection(server_sock):
     client_sock, client_info = server_sock.accept()
     armor_thread = threading.Thread(None, sendArmorStatus, "armorThread", [client_sock])
-    armor_thread.start()
+    #armor_thread.start()
     global connected
     connected_lock.acquire()
     connected = True
