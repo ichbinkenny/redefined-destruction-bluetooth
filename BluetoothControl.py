@@ -20,7 +20,7 @@ def sendArmorStatus(client_sock):
     while True:
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
         armor_status = armor_stat_proc.stdout.readline()
-        client_sock.send("Armor Status: {}".format(armor_status))
+        client_sock.send("Armor Status: {}".format(str(armor_status)))
         time.sleep(armor_refresh_rate_ms / 1000.0)
 
 def doConnection(server_sock):
