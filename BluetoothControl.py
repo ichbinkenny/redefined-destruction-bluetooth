@@ -106,10 +106,10 @@ def parseCommand(cmd_list):
                     system("mv wpa_supplicant.conf /etc/wpa_supplicant/")
                     system("sudo systemctl restart networking")
                     # Now we need to start the client connection to the webserver
+                    global web_client_proc
                     if web_client_proc is not None:
                         #previous process was running
                         web_client_proc.terminate()
-                    global web_client_proc
                     web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE)
                 except:
                     print("Generation failed due to invalid characters...")
