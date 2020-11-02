@@ -104,7 +104,7 @@ def parseCommand(cmd_list):
                     print("Generation successful")
                     print("Replacing old wpa_supplicant")
                     system("mv wpa_supplicant.conf /etc/wpa_supplicant/")
-                    system("sudo systemctl restart networking")
+                    system("sudo iw -i wlan0 reconfigure")
                     # Now we need to start the client connection to the webserver
                     global web_client_proc
                     if web_client_proc is not None:
