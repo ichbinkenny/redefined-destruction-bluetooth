@@ -1,8 +1,10 @@
+import threading
 import bluetooth
 import subprocess
 from os import system
 import time
 import multiprocessing
+import queue
 
 import sys
 sys.path.append('../Movement/')
@@ -13,19 +15,52 @@ from BackWheels import stop as back_stop
 uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 front_wheel_proc = None
 back_wheel_proc = None
+web_client_proc = None
 armor_refresh_rate_ms = 100
+armor_state = ['0', '0', '0'] #armor is initially disconnected
+update_queue = queue.Queue(-1)
 connected = False
 
-def sendArmorStatus(client_sock):
+def runUpdateQueue():
+    print("Update queue starting")
+    while True:
+        if not update_queue.empty:
+                stat : str = update_queue.get()
+                web_client_proc.stdin.write(stat.encode('utf-8'))
+
+def sendArmorStatusToPhone(client_sock):
     while True:
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
         armor_status = armor_stat_proc.stdout.readline()
+        armor_conns = armor_status.split(':')
         client_sock.send("Armor Status: {}".format(str(armor_status)))
+        #Check if armor1 added
+        if(armor_conns[0] != armor_state[0]):
+            armor_state[0] = armor_conns[0]
+            if(armor_conns[0]):
+                #Armor panel added
+                update_queue.put("3: armor1")
+            else:
+                update_queue.put("4: armor1")
+        if(armor_conns[1] != armor_state[1]):
+            armor_state[1] = armor_conns[1]
+            if(armor_conns[1]):
+                #Armor panel added
+                update_queue.put("3: armor2")
+            else:
+                update_queue.put("4: armor2")
+        if(armor_conns[2] != armor_state[2]):
+            armor_state[2] = armor_conns[2]
+            if(armor_conns[2]):
+                #Armor panel added
+                update_queue.put("3: armor3")
+            else:
+                update_queue.put("4: armor3")
         time.sleep(armor_refresh_rate_ms / 1000.0)
 
 def doConnection(server_sock):
     client_sock, client_info = server_sock.accept()
-    armor_process = multiprocessing.Process(target=sendArmorStatus, args=(client_sock,))
+    armor_process = multiprocessing.Process(target=sendArmorStatusToPhone, args=(client_sock,))
     armor_process.start()
     connected = True
     # We can fetch data now!
@@ -69,6 +104,13 @@ def parseCommand(cmd_list):
                     print("Generation successful")
                     print("Replacing old wpa_supplicant")
                     system("mv wpa_supplicant.conf /etc/wpa_supplicant/")
+                    system("sudo systemctl restart networking")
+                    # Now we need to start the client connection to the webserver
+                    if web_client_proc is not None:
+                        #previous process was running
+                        web_client_proc.terminate()
+                    global web_client_proc
+                    web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE)
                 except:
                     print("Generation failed due to invalid characters...")
         else:
