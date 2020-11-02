@@ -27,11 +27,12 @@ def runUpdateQueue():
         if not update_queue.empty:
                 stat : str = update_queue.get()
                 web_client_proc.stdin.write(stat.encode('utf-8'))
+                web_client_proc.stdin.flush() ## Ensure this makes it to the process!
 
 def sendArmorStatusToPhone(client_sock):
     while True:
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
-        armor_status = armor_stat_proc.stdout.readline()
+        armor_status = str(armor_stat_proc.stdout.readline())
         armor_conns = armor_status.split(':')
         client_sock.send("Armor Status: {}".format(str(armor_status)))
         #Check if armor1 added
@@ -104,13 +105,17 @@ def parseCommand(cmd_list):
                     print("Generation successful")
                     print("Replacing old wpa_supplicant")
                     system("mv wpa_supplicant.conf /etc/wpa_supplicant/")
-                    system("sudo iw -i wlan0 reconfigure")
-                    # Now we need to start the client connection to the webserver
-                    global web_client_proc
-                    if web_client_proc is not None:
-                        #previous process was running
-                        web_client_proc.terminate()
-                    web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE)
+                    wifi_proc = subprocess.Popen(["/bin/sh", "../Networking/wifi-restart.sh"], stdout=subprocess.PIPE)
+                    reconn_status = wifi_proc.communicate() # This needs to lock.
+                    if reconn_status != "SUCCESS!":
+                        print("Failed to connect to network!")
+                    else:
+                        # Now we need to start the client connection to the webserver
+                        global web_client_proc
+                        if web_client_proc is not None:
+                            #previous process was running
+                            web_client_proc.terminate()
+                        web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE)
                 except:
                     print("Generation failed due to invalid characters...")
         else:
