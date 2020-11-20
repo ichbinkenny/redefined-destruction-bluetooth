@@ -29,40 +29,50 @@ def runUpdateQueue():
                 web_client_proc.stdin.write(stat.encode('utf-8'))
                 web_client_proc.stdin.flush() ## Ensure this makes it to the process!
 
-def sendArmorStatusToPhone(client_sock):
+def sendArmorStatusToPhone(client_sock, web_client_proc):
     while True:
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
         armor_status = str(armor_stat_proc.stdout.readline())
         armor_conns = armor_status.split(':')
+        print("ARMOR STATUS: {} {} {}".format(armor_conns[0], armor_conns[1], armor_conns[2]))
         client_sock.send("Armor Status: {}".format(str(armor_status)))
         #Check if armor1 added
         if(armor_conns[0] != armor_state[0]):
             armor_state[0] = armor_conns[0]
             if(armor_conns[0]):
                 #Armor panel added
+                print("ARMOR TOGGLE")
+                web_client_proc.stdin.write("3: armor1".encode('utf-8'))
                 update_queue.put("3: armor1")
             else:
                 update_queue.put("4: armor1")
+            web_client_proc.stdin.flush()
         if(armor_conns[1] != armor_state[1]):
             armor_state[1] = armor_conns[1]
             if(armor_conns[1]):
                 #Armor panel added
+                web_client_proc.stdin.write("3: armor2".encode('utf-8'))
                 update_queue.put("3: armor2")
             else:
                 update_queue.put("4: armor2")
+            web_client_proc.stdin.flush()
         if(armor_conns[2] != armor_state[2]):
             armor_state[2] = armor_conns[2]
             if(armor_conns[2]):
                 #Armor panel added
+                web_client_proc.stdin.write("3: armor3".encode('utf-8'))
                 update_queue.put("3: armor3")
             else:
                 update_queue.put("4: armor3")
+            web_client_proc.stdin.flush()
         time.sleep(armor_refresh_rate_ms / 1000.0)
 
 def doConnection(server_sock):
     client_sock, client_info = server_sock.accept()
-    armor_process = multiprocessing.Process(target=sendArmorStatusToPhone, args=(client_sock,))
+    web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE)
+    armor_process = multiprocessing.Process(target=sendArmorStatusToPhone, args=(client_sock,web_client_proc))
     armor_process.start()
+    # Start process to communicate with webserver
     connected = True
     # We can fetch data now!
     while connected:
@@ -85,8 +95,8 @@ def doConnection(server_sock):
 def parseCommand(cmd_list):
     # For now, this accounts only for joystick position, and attack button status
     if len(cmd_list) == 2:
-        # Only movements were sent.
-        print("Movement request")
+        # Standard command sent
+        print("Standard command") 
         front_val = str(cmd_list[0]) + "\n"
         front_wheel_proc.stdin.write(front_val.encode('utf-8'))
         front_wheel_proc.stdin.flush()
@@ -135,7 +145,7 @@ def setup():
     front_wheel_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/FrontWheels.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     global back_wheel_proc
     back_wheel_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/BackWheels.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    print("Creating server socket.")
+    print("Creating bluetooth server socket.")
     server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
     server_sock.bind(("", bluetooth.PORT_ANY))
     server_sock.listen(1)
@@ -145,7 +155,7 @@ def setup():
                             profiles=[bluetooth.SERIAL_PORT_PROFILE],
                             # protocols=[bluetooth.OBEX_UUID]
                             )
-    print("Waiting for a client to connect...")
+    print("Waiting for a bluetooth client to connect...")
     doConnection(server_sock)
     # Something forced a return from doConnection, so cleanup the socket.
     server_sock.close()
