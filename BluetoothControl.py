@@ -29,9 +29,17 @@ def runUpdateQueue():
                 web_client_proc.stdin.write(stat.encode('utf-8'))
                 web_client_proc.stdin.flush() ## Ensure this makes it to the process!
 
+def readServerUpdates(client, proc):
+    while True:
+        msg = proc.stdout.readline()
+        print(msg)
+        client.send("ARMOR CHANGE FOUND!!!!")
+
 def sendArmorStatusToPhone(client_sock):
     print("Armor process spawned.")
     web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    serverUpdateThread = multiprocessing.Process(target=readServerUpdates, args=(client_sock, web_client_proc))
+    serverUpdateThread.start()
     while True:
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
         armor_status = str(armor_stat_proc.stdout.readline())
