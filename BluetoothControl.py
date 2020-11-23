@@ -43,6 +43,8 @@ def readServerUpdates(client, proc):
 def parseStatusUpdate(client, msg):
     status_code = -1
     message = ""
+    if 'id: ' in msg:
+        client.sendall(bytes("YOUR_ID: " + msg[msg.index(':' + 1):]))
     if ':' in msg:
         status_code = int(msg[:msg.index(':')])
         message = msg[msg.index(':') + 2:]
