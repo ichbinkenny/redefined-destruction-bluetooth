@@ -21,6 +21,11 @@ armor_state = ['0', '0', '0'] #armor is initially disconnected
 update_queue = queue.Queue(-1)
 connected = False
 
+READY = 1
+BUSY = 2
+DEV_ADDED = 3
+DEV_REMOVED = 4
+
 def runUpdateQueue():
     print("Update queue starting")
     while True:
@@ -33,7 +38,23 @@ def readServerUpdates(client, proc):
     while True:
         msg = proc.stdout.readline()
         print(msg)
-        client.send("ARMOR CHANGE FOUND!!!!")
+        parseStatusUpdate(client, msg)
+
+def parseStatusUpdate(client, msg):
+    status_code = -1
+    message = msg[msg.index(':') + 2:]
+    if ':' in msg:
+        status_code = int(msg[:msg.index(':')])
+    if status_code == READY:
+        client.sendall(bytes("RDY: " + message, 'utf-8'))
+    elif status_code == BUSY:
+        client.sendall(bytes("BSY: " + message, 'utf-8'))
+    elif status_code == DEV_ADDED:
+        client.sendall(bytes("ADD: " + message, 'utf-8'))
+    elif status_code == DEV_REMOVED:
+        client.sendall(bytes("RMV: " + message, 'utf-8'))
+    else:
+        client.sendall(bytes(msg, 'utf-8'))
 
 def sendArmorStatusToPhone(client_sock):
     print("Armor process spawned.")
