@@ -68,7 +68,7 @@ def sendArmorStatusToPhone(client_sock):
     while True:
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
         armor_status = armor_stat_proc.stdout.readline().decode('utf-8')
-        armor_conns = map(lambda v: v == 'True',armor_status.split(':'))
+        armor_conns = list(map(lambda v: v == 'True',armor_status.split(':')))
         client_sock.send("Armor Status: {}\n".format(armor_status.strip()))
         #Check if armor1 added
         if(armor_conns[0] != armor_state[0]):
