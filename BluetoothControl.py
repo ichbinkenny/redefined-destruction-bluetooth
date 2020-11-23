@@ -17,7 +17,6 @@ front_wheel_proc = None
 back_wheel_proc = None
 web_client_proc = None
 armor_refresh_rate_ms = 100
-armor_state = ['-1', '-1', '-1'] #armor is initially unknown
 update_queue = queue.Queue(-1)
 connected = False
 
@@ -65,6 +64,7 @@ def sendArmorStatusToPhone(client_sock):
     web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     serverUpdateThread = multiprocessing.Process(target=readServerUpdates, args=(client_sock, web_client_proc))
     serverUpdateThread.start()
+    armor_state = [False, False, False] #armor initially disconnected.
     while True:
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
         armor_status = armor_stat_proc.stdout.readline().decode('utf-8')
@@ -73,37 +73,41 @@ def sendArmorStatusToPhone(client_sock):
         #Check if armor1 added
         if(armor_conns[0] != armor_state[0]):
             armor_state[0] = armor_conns[0]
-            if armor_conns[0] == '1':
+            if armor_conns[0] == True:
                 #Armor panel added
                 web_client_proc.stdin.write("3: armor1\n".encode('utf-8'))
                 web_client_proc.stdin.flush()
                 update_queue.put("3: armor1")
-            elif armor_conns[0] == '0':
+            elif armor_conns[0]:
                 web_client_proc.stdin.write("4: armor1\n".encode('utf-8'))
                 web_client_proc.stdin.flush()
                 update_queue.put("4: armor1")
         if(armor_conns[1] != armor_state[1]):
             armor_state[1] = armor_conns[1]
-            if armor_conns[1] == '1':
+            if bool(armor_conns[1]) == True:
                 #Armor panel added
                 web_client_proc.stdin.write("3: armor2\n".encode('utf-8'))
                 web_client_proc.stdin.flush()
                 update_queue.put("3: armor2")
-            elif armor_conns[1] == '0':
+            elif bool(armor_conns[1]) == False:
                 web_client_proc.stdin.write("4: armor2\n".encode('utf-8'))
                 web_client_proc.stdin.flush()
                 update_queue.put("4: armor2")
+            else:
+                print("UNKNOWN ARMOR STATE: %s" % armor_conns[1])
         if(armor_conns[2] != armor_state[2]):
             armor_state[2] = armor_conns[2]
-            if armor_conns[2] == '1':
+            if bool(armor_conns[2]) == True:
                 #Armor panel added
                 web_client_proc.stdin.write("3: armor3\n".encode('utf-8'))
                 web_client_proc.stdin.flush()
                 update_queue.put("3: armor3")
-            elif armor_conns[2] == '0':
+            elif bool(armor_conns[2]) == False:
                 web_client_proc.stdin.write("4: armor3\n".encode('utf-8'))
                 web_client_proc.stdin.flush()
                 update_queue.put("4: armor3")
+            else:
+                print("UNKNOWN ARMOR STATE: %s" % armor_conns[2])
         time.sleep(armor_refresh_rate_ms / 1000.0)
 
 def doConnection(server_sock):
