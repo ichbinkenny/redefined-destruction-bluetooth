@@ -36,15 +36,16 @@ def runUpdateQueue():
 
 def readServerUpdates(client, proc):
     while True:
-        msg = proc.stdout.readline()
+        msg = proc.stdout.readline().decode('utf-8')
         print(msg)
         parseStatusUpdate(client, msg)
 
 def parseStatusUpdate(client, msg):
     status_code = -1
-    message = msg[msg.index(':') + 2:]
+    message = ""
     if ':' in msg:
         status_code = int(msg[:msg.index(':')])
+        message = msg[msg.index(':') + 2:]
     if status_code == READY:
         client.sendall(bytes("RDY: " + message, 'utf-8'))
     elif status_code == BUSY:
