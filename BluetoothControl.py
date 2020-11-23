@@ -44,7 +44,7 @@ def parseStatusUpdate(client, msg):
     status_code = -1
     message = ""
     if 'id: ' in msg:
-        client.sendall(bytes("YOUR_ID: " + msg[msg.index(':' + 1):]))
+        client.sendall(bytes("YOUR_ID: " + msg[msg.index(':') + 1:], 'utf-8'))
         return
     if ':' in msg:
         status_code = int(msg[:msg.index(':')])
@@ -67,9 +67,9 @@ def sendArmorStatusToPhone(client_sock):
     serverUpdateThread.start()
     while True:
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
-        armor_status = str(armor_stat_proc.stdout.readline())
+        armor_status = armor_stat_proc.stdout.readline().decode('utf-8')
         armor_conns = armor_status.split(':')
-        client_sock.send("Armor Status: {}".format(str(armor_status)))
+        client_sock.send("Armor Status: {}\n".format(armor_status.strip()))
         #Check if armor1 added
         if(armor_conns[0] != armor_state[0]):
             armor_state[0] = armor_conns[0]
