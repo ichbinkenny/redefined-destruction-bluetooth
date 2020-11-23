@@ -45,6 +45,7 @@ def parseStatusUpdate(client, msg):
     message = ""
     if 'id: ' in msg:
         client.sendall(bytes("YOUR_ID: " + msg[msg.index(':' + 1):]))
+        return
     if ':' in msg:
         status_code = int(msg[:msg.index(':')])
         message = msg[msg.index(':') + 2:]
