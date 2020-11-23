@@ -80,6 +80,8 @@ def sendArmorStatusToPhone(client_sock):
                 web_client_proc.stdin.flush()
                 update_queue.put("3: armor1")
             else:
+                web_client_proc.stdin.write("4: armor1\n".encode('utf-8'))
+                web_client_proc.stdin.flush()
                 update_queue.put("4: armor1")
         if(armor_conns[1] != armor_state[1]):
             armor_state[1] = armor_conns[1]
@@ -89,6 +91,8 @@ def sendArmorStatusToPhone(client_sock):
                 web_client_proc.stdin.flush()
                 update_queue.put("3: armor2")
             else:
+                web_client_proc.stdin.write("4: armor2\n".encode('utf-8'))
+                web_client_proc.stdin.flush()
                 update_queue.put("4: armor2")
         if(armor_conns[2] != armor_state[2]):
             armor_state[2] = armor_conns[2]
@@ -98,6 +102,8 @@ def sendArmorStatusToPhone(client_sock):
                 web_client_proc.stdin.flush()
                 update_queue.put("3: armor3")
             else:
+                web_client_proc.stdin.write("4: armor3\n".encode('utf-8'))
+                web_client_proc.stdin.flush()
                 update_queue.put("4: armor3")
         time.sleep(armor_refresh_rate_ms / 1000.0)
 
