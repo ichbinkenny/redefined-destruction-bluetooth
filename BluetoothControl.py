@@ -11,14 +11,18 @@ sys.path.append('../Movement/')
 ### Local module imports
 from FrontWheels import stop as front_stop
 from BackWheels import stop as back_stop
+from Weapon import reset as weapon_reset
 
 uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 front_wheel_proc = None
 back_wheel_proc = None
 web_client_proc = None
+weapon_proc = None
 armor_refresh_rate_ms = 100
 update_queue = queue.Queue(-1)
 connected = False
+should_update_armor = False
+bot_id = -1
 
 READY = 1
 BUSY = 2
@@ -36,6 +40,9 @@ def runUpdateQueue():
 def readServerUpdates(client, proc):
     while True:
         msg = proc.stdout.readline().decode('utf-8')
+        if 'id:' in msg:
+            global bot_id
+            bot_id = 99
         print(msg)
         parseStatusUpdate(client, msg)
 
@@ -44,6 +51,8 @@ def parseStatusUpdate(client, msg):
     message = ""
     if 'id: ' in msg:
         client.sendall(bytes("YOUR_ID: " + msg[msg.index(':') + 1:], 'utf-8'))
+        global bot_id
+        bot_id = int(msg[msg.index(': ') + 1:].strip())
         return
     if ':' in msg:
         status_code = int(msg[:msg.index(':')])
@@ -59,17 +68,17 @@ def parseStatusUpdate(client, msg):
     else:
         client.sendall(bytes(msg, 'utf-8'))
 
-def sendArmorStatusToPhone(client_sock):
+def sendArmorStatusToPhone(client_sock, web_client_proc):
     print("Armor process spawned.")
-    web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     serverUpdateThread = multiprocessing.Process(target=readServerUpdates, args=(client_sock, web_client_proc))
     serverUpdateThread.start()
     armor_state = [False, False, False] #armor initially disconnected.
-    while True:
+    global connected
+    while connected:
         armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
         armor_status = armor_stat_proc.stdout.readline().decode('utf-8')
         armor_conns = list(map(lambda v: v.strip() == '1',armor_status.split(':')))
-        client_sock.send("Armor Status: {}\n".format(armor_status.strip()))
+        client_sock.send("ArmorStatus: {}\n".format(armor_status.strip()))
         #Check if armor1 added
         if(armor_conns[0] != armor_state[0]):
             armor_state[0] = armor_conns[0]
@@ -111,41 +120,54 @@ def sendArmorStatusToPhone(client_sock):
                 print("UNKNOWN ARMOR STATE: %s" % armor_state[2])
         time.sleep(armor_refresh_rate_ms / 1000.0)
 
-def doConnection(server_sock):
+def doConnection(server_sock, web_client_proc, weapon_proc):
     client_sock, client_info = server_sock.accept()
-    armor_process = multiprocessing.Process(target=sendArmorStatusToPhone, args=(client_sock,))
-    armor_process.start()
+    armor_process = multiprocessing.Process(target=sendArmorStatusToPhone, args=(client_sock,web_client_proc,weapon_proc))
     # Start process to communicate with webserver
+    global connected
     connected = True
+    armor_process.start()
     # We can fetch data now!
     while connected:
         try:
             data = client_sock.recv(1024).decode('utf-8')
             if not data: #no data received
                 break
-            print("Received:", data)
-            parseCommand(data.split(' '))
+            parseCommand(client_sock, data.split(' '), web_client_proc)
         except:
             connected = False # client disconnected!
 
     front_stop()
     back_stop()
-    armor_process.terminate()
+    weapon_reset()
+    #armor_process.terminate()
     print("Client disconnected... Awaiting new client connection.")
     client_sock.close()
-    doConnection(server_sock) # prevent from closing on dc
+    doConnection(server_sock, web_client_proc) # prevent from closing on dc
 
-def parseCommand(cmd_list):
+def parseCommand(client, cmd_list, web_client_proc=None, weapon_proc=None):
     # For now, this accounts only for joystick position, and attack button status
-    if len(cmd_list) == 2:
+    if len(cmd_list) == 1:
+        print("Info CMD")
+        client.send("{}\n".format(bot_id))
+    elif len(cmd_list) == 2:
         # Standard command sent
-        print("Standard command") 
-        front_val = str(cmd_list[0]) + "\n"
-        front_wheel_proc.stdin.write(front_val.encode('utf-8'))
-        front_wheel_proc.stdin.flush()
-        speed = str(cmd_list[1]) + "\n"
-        back_wheel_proc.stdin.write(speed.encode('utf-8'))
-        back_wheel_proc.stdin.flush()
+        if(cmd_list[0] == 'weapon:'):
+            weapon = cmd_list[1]
+            web_client_proc.stdin.write(bytes('3: ' + cmd_list[1], 'utf-8'))
+            web_client_proc.stdin.flush()
+        elif cmd_list[0] == 'primary:':
+            weapon_proc.stdin.write(bytes(cmd_list[1], 'utf-8'))
+            weapon_proc.stdin.flush()
+        elif cmd_list[0] == 'secondary:':
+            print("Attacking with secondary weapon")
+        else:
+            front_val = str(cmd_list[0]) + "\n"
+            front_wheel_proc.stdin.write(front_val.encode('utf-8'))
+            front_wheel_proc.stdin.flush()
+            speed = str(cmd_list[1]) + "\n"
+            back_wheel_proc.stdin.write(speed.encode('utf-8'))
+            back_wheel_proc.stdin.flush()
     elif len(cmd_list) == 3:
         # Movement and attack sent.
         if cmd_list[0].lower() == "wifi":
@@ -164,7 +186,6 @@ def parseCommand(cmd_list):
                         print("Failed to connect to network!")
                     else:
                         # Now we need to start the client connection to the webserver
-                        global web_client_proc
                         if web_client_proc is not None:
                             #previous process was running
                             web_client_proc.terminate()
@@ -188,7 +209,10 @@ def setup():
     front_wheel_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/FrontWheels.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     global back_wheel_proc
     back_wheel_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/BackWheels.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    global weapon_proc
+    weapon_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/Weapon.py"], stdin=subprocess.PIPE)
     print("Creating bluetooth server socket.")
+    web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
     server_sock.bind(("", bluetooth.PORT_ANY))
     server_sock.listen(1)
@@ -199,9 +223,10 @@ def setup():
                             # protocols=[bluetooth.OBEX_UUID]
                             )
     print("Waiting for a bluetooth client to connect...")
-    doConnection(server_sock)
+    doConnection(server_sock, web_client_proc, weapon_proc)
     # Something forced a return from doConnection, so cleanup the socket.
     server_sock.close()
+    web_client_proc.terminate()
 
 if __name__ == "__main__":
     setup()
