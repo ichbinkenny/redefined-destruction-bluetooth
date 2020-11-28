@@ -28,6 +28,8 @@ READY = 1
 BUSY = 2
 DEV_ADDED = 3
 DEV_REMOVED = 4
+ENTER_COMBAT = 5
+EXIT_COMBAT = 6
 
 def runUpdateQueue():
     print("Update queue starting")
@@ -54,6 +56,8 @@ def parseStatusUpdate(client, msg):
         global bot_id
         bot_id = int(msg[msg.index(': ') + 1:].strip())
         return
+    if 'UNKNOWN STATUS' in msg:
+        return
     if ':' in msg:
         status_code = int(msg[:msg.index(':')])
         message = msg[msg.index(':') + 2:]
@@ -68,7 +72,7 @@ def parseStatusUpdate(client, msg):
     else:
         client.sendall(bytes(msg, 'utf-8'))
 
-def sendArmorStatusToPhone(client_sock, web_client_proc):
+def sendArmorStatusToPhone(client_sock, web_client_proc, weapon_proc):
     print("Armor process spawned.")
     serverUpdateThread = multiprocessing.Process(target=readServerUpdates, args=(client_sock, web_client_proc))
     serverUpdateThread.start()
@@ -133,8 +137,9 @@ def doConnection(server_sock, web_client_proc, weapon_proc):
             data = client_sock.recv(1024).decode('utf-8')
             if not data: #no data received
                 break
-            parseCommand(client_sock, data.split(' '), web_client_proc)
-        except:
+            parseCommand(client_sock, data.split(' '), web_client_proc, weapon_proc)
+        except Exception as e:
+            print("Exception: %s" % e)
             connected = False # client disconnected!
 
     front_stop()
@@ -143,21 +148,28 @@ def doConnection(server_sock, web_client_proc, weapon_proc):
     #armor_process.terminate()
     print("Client disconnected... Awaiting new client connection.")
     client_sock.close()
-    doConnection(server_sock, web_client_proc) # prevent from closing on dc
+    doConnection(server_sock, web_client_proc, weapon_proc) # prevent from closing on dc
 
 def parseCommand(client, cmd_list, web_client_proc=None, weapon_proc=None):
-    # For now, this accounts only for joystick position, and attack button status
     if len(cmd_list) == 1:
-        print("Info CMD")
-        client.send("{}\n".format(bot_id))
+        if 'EnteringCombat' in cmd_list[0].strip():
+            print("SENDING COMBAT CMD ENTER")
+            web_client_proc.stdin.write(bytes(str(ENTER_COMBAT) + ": " + str(bot_id) + '\n', 'utf-8'))
+            web_client_proc.stdin.flush()
+        elif "ExitingCombat" in cmd_list[0]:
+            web_client_proc.stdin.write(bytes(str(EXIT_COMBAT) + ": " + str(bot_id) + '\n', 'utf-8'))
+            web_client_proc.stdin.flush()
+        else:
+            print("Info CMD: " + cmd_list[0].strip())
+            client.send("{}\n".format(bot_id))
     elif len(cmd_list) == 2:
         # Standard command sent
         if(cmd_list[0] == 'weapon:'):
             weapon = cmd_list[1]
-            web_client_proc.stdin.write(bytes('3: ' + cmd_list[1], 'utf-8'))
+            web_client_proc.stdin.write(bytes('3: ' + cmd_list[1] + '\n', 'utf-8'))
             web_client_proc.stdin.flush()
         elif cmd_list[0] == 'primary:':
-            weapon_proc.stdin.write(bytes(cmd_list[1], 'utf-8'))
+            weapon_proc.stdin.write(bytes(cmd_list[1] + '\n', 'utf-8'))
             weapon_proc.stdin.flush()
         elif cmd_list[0] == 'secondary:':
             print("Attacking with secondary weapon")
