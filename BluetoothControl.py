@@ -7,7 +7,7 @@ import multiprocessing
 import queue
 
 import sys
-sys.path.append('../Movement/')
+sys.path.append('/home/pi/redefined-destruction/Movement/')
 ### Local module imports
 from FrontWheels import stop as front_stop
 from BackWheels import stop as back_stop
@@ -79,7 +79,7 @@ def sendArmorStatusToPhone(client_sock, web_client_proc, weapon_proc):
     armor_state = [False, False, False] #armor initially disconnected.
     global connected
     while connected:
-        armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
+        armor_stat_proc = subprocess.Popen(["/usr/bin/python3", "/home/pi/redefined-destruction/Movement/ArmorPanelControl.py"], stdout=subprocess.PIPE)
         armor_status = armor_stat_proc.stdout.readline().decode('utf-8')
         armor_conns = list(map(lambda v: v.strip() == '1',armor_status.split(':')))
         client_sock.send("ArmorStatus: {}\n".format(armor_status.strip()))
@@ -192,7 +192,7 @@ def parseCommand(client, cmd_list, web_client_proc=None, weapon_proc=None):
                     print("Generation successful")
                     print("Replacing old wpa_supplicant")
                     system("mv wpa_supplicant.conf /etc/wpa_supplicant/")
-                    wifi_proc = subprocess.Popen(["/bin/sh", "../Networking/wifi-restart.sh"], stdout=subprocess.PIPE)
+                    wifi_proc = subprocess.Popen(["/bin/sh", "/home/pi/redefined-destruction/Networking/wifi-restart.sh"], stdout=subprocess.PIPE)
                     reconn_status = wifi_proc.communicate() # This needs to lock.
                     if reconn_status != "SUCCESS!":
                         print("Failed to connect to network!")
@@ -201,7 +201,7 @@ def parseCommand(client, cmd_list, web_client_proc=None, weapon_proc=None):
                         if web_client_proc is not None:
                             #previous process was running
                             web_client_proc.terminate()
-                        web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE)
+                        web_client_proc = subprocess.Popen(["/usr/bin/python3", "/home/pi/redefined-destruction/Networking/client.py"], stdin=subprocess.PIPE)
                 except:
                     print("Generation failed due to invalid characters...")
         else:
@@ -218,13 +218,13 @@ def setup():
     system("hciconfig hci0 piscan")
     print("Starting movement modules...")
     global front_wheel_proc
-    front_wheel_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/FrontWheels.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    front_wheel_proc = subprocess.Popen(["/usr/bin/python3", "/home/pi/redefined-destruction/Movement/FrontWheels.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     global back_wheel_proc
-    back_wheel_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/BackWheels.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    back_wheel_proc = subprocess.Popen(["/usr/bin/python3", "/home/pi/redefined-destruction/Movement/BackWheels.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     global weapon_proc
-    weapon_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/Weapon.py"], stdin=subprocess.PIPE)
+    weapon_proc = subprocess.Popen(["/usr/bin/python3", "/home/pi/redefined-destruction/Movement/Weapon.py"], stdin=subprocess.PIPE)
     print("Creating bluetooth server socket.")
-    web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    web_client_proc = subprocess.Popen(["/usr/bin/python3", "/home/pi/redefined-destruction/Networking/client.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
     server_sock.bind(("", bluetooth.PORT_ANY))
     server_sock.listen(1)
