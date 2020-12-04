@@ -11,7 +11,7 @@ sys.path.append('../Movement/')
 ### Local module imports
 from FrontWheels import stop as front_stop
 from BackWheels import stop as back_stop
-from Weapon import reset as weapon_reset
+from Weapon import weapon_reset as weapon_reset
 
 uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
 front_wheel_proc = None
@@ -166,9 +166,13 @@ def parseCommand(client, cmd_list, web_client_proc=None, weapon_proc=None):
         # Standard command sent
         if(cmd_list[0] == 'weapon:'):
             weapon = cmd_list[1]
+            print("Found weapon: %s" % cmd_list[1])
+            weapon_proc.stdin.write(bytes(cmd_list[1] + "\n", "utf-8"))
+            weapon_proc.stdin.flush()
             web_client_proc.stdin.write(bytes('3: ' + cmd_list[1] + '\n', 'utf-8'))
             web_client_proc.stdin.flush()
         elif cmd_list[0] == 'primary:':
+            print("Attack: %s" % cmd_list[1])
             weapon_proc.stdin.write(bytes(cmd_list[1] + '\n', 'utf-8'))
             weapon_proc.stdin.flush()
         elif cmd_list[0] == 'secondary:':
@@ -179,6 +183,7 @@ def parseCommand(client, cmd_list, web_client_proc=None, weapon_proc=None):
             front_wheel_proc.stdin.flush()
             speed = str(cmd_list[1]) + "\n"
             back_wheel_proc.stdin.write(speed.encode('utf-8'))
+            print("Back SPeed: %s" % speed)
             back_wheel_proc.stdin.flush()
     elif len(cmd_list) == 3:
         # Movement and attack sent.
@@ -222,7 +227,7 @@ def setup():
     global back_wheel_proc
     back_wheel_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/BackWheels.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     global weapon_proc
-    weapon_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/Weapon.py"], stdin=subprocess.PIPE)
+    weapon_proc = subprocess.Popen(["/usr/bin/python3", "../Movement/Weapon.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     print("Creating bluetooth server socket.")
     web_client_proc = subprocess.Popen(["/usr/bin/python3", "../Networking/client.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     server_sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
